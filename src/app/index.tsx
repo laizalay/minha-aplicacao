@@ -1,98 +1,123 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
+import { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  FlatList,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BottomTabInset } from '@/constants/theme';
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+const cores = {
+  fundo: '#b2b1db',
+  destaque: '#e2e607',
+  texto: '#000000',
+  textoSecundario: '#e40c0c',
+};
+
+const URL_API = 'https://jsonplaceholder.typicode.com/users';
+
+type Usuario = {
+  id: number;
+  name: string;
+  email: string;
+};
 
 export default function HomeScreen() {
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function buscarUsuarios() {
+      try {
+        const resposta = await fetch(URL_API);
+        if (!resposta.ok) throw new Error('Erro na requisição');
+        const dados: Usuario[] = await resposta.json();
+        setUsuarios(dados);
+      } catch (e) {
+        setErro('Não foi possível carregar os dados.');
+      } finally {
+        setCarregando(false);
+      }
+    }
+
+    buscarUsuarios();
+  }, []);
+
+  if (carregando) {
+    return (
+      <View style={styles.centro}>
+        <ActivityIndicator size="large" color={cores.destaque} />
+      </View>
+    );
+  }
+
+  if (erro) {
+    return (
+      <View style={styles.centro}>
+        <Text style={styles.texto}>{erro}</Text>
+      </View>
+    );
+  }
+
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <StatusBar barStyle="light-content" />
+      <Text style={styles.titulo}>Lista de Usuários</Text>
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+      <FlatList
+        data={usuarios}
+        keyExtractor={(item) => String(item.id)}
+        contentContainerStyle={styles.lista}
+        renderItem={({ item }) => (
+          <View style={styles.lista}>
+            <Text style={styles.nome}>{item.name}</Text>
+            <Text style={styles.email}>{item.email}</Text>
+          </View>
+        )}
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
+    backgroundColor: cores.fundo,
+    paddingHorizontal: 16,
   },
-  safeArea: {
+  centro: {
     flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  heroSection: {
+    backgroundColor: cores.fundo,
     alignItems: 'center',
     justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
   },
-  title: {
-    textAlign: 'center',
+  titulo: {
+    fontSize: 26,
+    fontWeight: 'bold',
+    color: cores.destaque,
+    marginTop: 16,
+    marginBottom: 16,
   },
-  code: {
-    textTransform: 'uppercase',
+  lista: {
+    paddingBottom: BottomTabInset + 16,
   },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+ 
+  nome: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: cores.texto,
+  },
+  email: {
+    fontSize: 14,
+    color: cores.textoSecundario,
+    marginTop: 4,
+  },
+  texto: {
+    color: cores.texto,
   },
 });
